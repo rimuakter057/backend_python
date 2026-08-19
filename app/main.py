@@ -1,11 +1,18 @@
 import psycopg2
 import time
+
 from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from . import models
+from .database import engine, get_db, Base
+
 
 app = FastAPI()
 
+Base.metadata.create_all(bind=engine)
 
 class Intro(BaseModel):
     name: str
@@ -73,6 +80,10 @@ def delete_intro(id:int):
            if not new_row:       
                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                detail="Intro id:{id} not found")
+
+@app.get("/coursealchemy")
+def course(db: Session = Depends(get_db)):
+    return {"status": "sqlalchemy ORM working"}
 
 @app.put("/update-intro/{id}")
 def update_intro(id: int, data: Intro):

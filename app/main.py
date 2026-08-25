@@ -22,6 +22,14 @@ class Intro(BaseModel):
     duration: int
 
 
+    
+class Course(BaseModel):
+    name: str
+    title: str
+    instructor: str
+    duration: int
+    description: str
+
 while True:
     try:
         conn = psycopg2.connect(
@@ -48,6 +56,12 @@ def read_data():
     cursor.execute("SELECT * FROM test_table")
     return cursor.fetchall()
 
+@app.get("/all-courses")
+def get_courses(db: Session =Depends(get_db)):
+     courses= db.query(models.Course).all()
+     return {"courses": courses}
+
+
 
 
 
@@ -58,6 +72,19 @@ def add_intro(data:Intro):
     conn.commit()
     return new_row
 
+@app.post("/courses")
+def create_course(course:Course,db: Session =Depends(get_db)):
+ new_course = models.Course(
+    name=course.name,
+    title=course.title,
+    instructor=course.instructor,
+    duration=course.duration,
+    description=course.description
+)
+ db.add(new_course)
+ db.commit()
+ db.refresh(new_course)
+ return {"Course": new_course}
 
 
 
@@ -72,6 +99,22 @@ def get_intro(id:int):
                              detail="Intro id:{id} not found")
         return {"intro_details":test_table}
 
+
+
+
+
+@app.get("/get-course/{id}")
+def get_course(id: int, db: Session = Depends(get_db)):
+    course = db.query(models.Course).filter(models.Course.id == id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Course id: {id} not found"
+        )
+    return {"course_details": course}
+     
+
+
 @app.get("delete-intro/{id}")
 def delete_intro(id:int):
            cursor.execute("DELETE FROM test_table WHERE id = %s RETURNING *",(id))
@@ -80,6 +123,21 @@ def delete_intro(id:int):
            if not new_row:       
                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                detail="Intro id:{id} not found")
+
+
+
+@app.delete("/delete-course/{id}")
+def delete_course(id: int, db: Session = Depends(get_db)):
+    course = db.query(models.Course).filter(models.Course.id == id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Course id: {id} not found"
+        )
+    db.delete(course)
+    db.commit()
+    return {"message": f"Course id: {id} deleted successfully"}
+           
 
 @app.get("/coursealchemy")
 def course(db: Session = Depends(get_db)):
